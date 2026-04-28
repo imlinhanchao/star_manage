@@ -26,6 +26,18 @@
 
       <div class="flex-1"></div>
 
+      <!-- No-list filter -->
+      <button
+        class="btn btn-xs gap-1"
+        :class="filterNoList ? 'btn-warning' : 'btn-ghost'"
+        :disabled="lists.length === 0"
+        :title="lists.length === 0 ? 'No GitHub Lists loaded' : ''"
+        @click="toggleNoListFilter"
+      >
+        <span class="i-mdi-filter-outline text-sm"></span>
+        {{ filterNoList ? 'No-list ✓' : 'No List' }}
+      </button>
+
       <!-- Search -->
       <div class="join">
         <input
@@ -61,6 +73,7 @@
     <div v-else-if="displayRepos.length === 0" class="text-center py-20 text-base-content/50">
       <span class="i-mdi-star-off text-5xl block mb-3"></span>
       <p class="text-lg">No starred repositories found</p>
+      <p v-if="filterNoList" class="text-sm mt-2">All repos on this page are in a list.</p>
     </div>
 
     <!-- Repo grid -->
@@ -71,6 +84,7 @@
         :repo="item.repo"
         :starred-at="item.starred_at"
         :token="token"
+        :lists="lists"
         @unstarred="handleUnstarred"
         @lists-updated="$emit('listsUpdated')"
       />
@@ -113,12 +127,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import RepoCard from './RepoCard.vue'
 import { getStarredRepos } from '../services/github.js'
 
 const props = defineProps({
   token: { type: String, required: true },
+  lists: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['listsUpdated'])
@@ -138,13 +153,21 @@ const perPage = ref(30)
 const sortField = ref('created')
 const sortDirection = ref('desc')
 const searchQuery = ref('')
+const filterNoList = ref(false)
 
-// For client-side star-count sorting, we accumulate fetched pages
-const cachedRepos = ref([]) // all pages fetched so far for star sort
 const totalPages = ref(1)
 
 const displayRepos = computed(() => {
   let items = allRepos.value
+
+  // Filter: repos not in any list
+  if (filterNoList.value && props.lists.length > 0) {
+    items = items.filter(item => {
+      const nodeId = item.repo.node_id
+      return !props.lists.some(list => list.repoNodeIds.has(nodeId))
+    })
+  }
+
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     items = items.filter(
@@ -192,7 +215,6 @@ async function loadRepos() {
       direction: sortDirection.value,
     })
 
-    // With Accept: application/vnd.github.star+json, repos have starred_at field merged in
     allRepos.value = repos.map(repo => ({ repo, starred_at: repo.starred_at || null }))
 
     if (tc !== null) {
@@ -217,6 +239,10 @@ function toggleDirection() {
   sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
   currentPage.value = 1
   loadRepos()
+}
+
+function toggleNoListFilter() {
+  filterNoList.value = !filterNoList.value
 }
 
 function goToPage(page) {

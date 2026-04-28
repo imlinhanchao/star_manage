@@ -66,12 +66,18 @@
           <!-- Main star list -->
           <div v-else class="flex gap-4">
             <div class="flex-1 min-w-0">
-              <StarList :token="token" @lists-updated="refreshLists" />
+              <StarList :token="token" :lists="githubLists" @lists-updated="refreshLists" />
             </div>
             <!-- Desktop lists sidebar inline -->
             <div v-if="showListsSidebar" class="hidden lg:block w-72 shrink-0">
               <div class="sticky top-20 bg-base-200 rounded-xl p-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-                <ListManager ref="listManagerRef" @updated="refreshLists" />
+                <ListManager
+                  ref="listManagerRef"
+                  :token="token"
+                  :lists="githubLists"
+                  :loading="listsLoading"
+                  @updated="refreshLists"
+                />
               </div>
             </div>
           </div>
@@ -82,7 +88,13 @@
       <div class="drawer-side z-50">
         <label for="lists-drawer" class="drawer-overlay"></label>
         <div class="bg-base-100 w-72 min-h-full p-4">
-          <ListManager ref="mobileListManagerRef" @updated="refreshLists" />
+          <ListManager
+            ref="mobileListManagerRef"
+            :token="token"
+            :lists="githubLists"
+            :loading="listsLoading"
+            @updated="refreshLists"
+          />
         </div>
       </div>
     </div>
@@ -102,12 +114,15 @@ import { ref, onMounted } from 'vue'
 import TokenInput from './src/components/TokenInput.vue'
 import StarList from './src/components/StarList.vue'
 import ListManager from './src/components/ListManager.vue'
+import { getUserLists } from './src/services/github.js'
 
 const token = ref('')
 const user = ref(null)
 const showTokenInput = ref(false)
 const showListsSidebar = ref(true)
 const theme = ref('light')
+const githubLists = ref([])
+const listsLoading = ref(false)
 
 const listManagerRef = ref(null)
 const mobileListManagerRef = ref(null)
@@ -125,6 +140,7 @@ onMounted(() => {
     if (savedUser) {
       try { user.value = JSON.parse(savedUser) } catch {}
     }
+    loadLists()
   } else {
     showTokenInput.value = true
   }
@@ -141,11 +157,23 @@ function handleTokenSaved({ token: t, user: u }) {
   user.value = u
   localStorage.setItem('github_user', JSON.stringify(u))
   showTokenInput.value = false
+  loadLists()
+}
+
+async function loadLists() {
+  if (!token.value) return
+  listsLoading.value = true
+  try {
+    githubLists.value = await getUserLists(token.value)
+  } catch (e) {
+    console.error('Failed to load lists:', e)
+  } finally {
+    listsLoading.value = false
+  }
 }
 
 function refreshLists() {
-  listManagerRef.value?.refresh()
-  mobileListManagerRef.value?.refresh()
+  loadLists()
 }
 </script>
 
