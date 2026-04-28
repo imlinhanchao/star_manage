@@ -55,38 +55,29 @@
       <div class="flex items-center gap-2 pt-1 border-t border-base-300">
         <!-- List dropdown -->
         <div class="dropdown dropdown-top">
-          <button tabindex="0" class="btn btn-xs btn-ghost gap-1">
-            <span class="i-mdi-playlist-plus text-base"></span>
-            Add to List
+          <button tabindex="0" class="btn btn-xs btn-ghost gap-1" :disabled="togglingList">
+            <span v-if="togglingList" class="loading loading-spinner loading-xs"></span>
+            <span v-else class="i-mdi-playlist-plus text-base"></span>
+            Lists
+            <span v-if="repoListIds.size > 0" class="badge badge-primary badge-xs">{{ repoListIds.size }}</span>
           </button>
-          <div tabindex="0" class="dropdown-content z-[1] card card-compact shadow bg-base-100 w-52 border border-base-300">
+          <div tabindex="0" class="dropdown-content z-[1] card card-compact shadow bg-base-100 w-56 border border-base-300">
             <div class="card-body p-2 gap-1">
-              <p class="font-semibold text-xs px-2 py-1 text-base-content/60">YOUR LISTS</p>
+              <p class="font-semibold text-xs px-2 py-1 text-base-content/60">GITHUB LISTS</p>
               <div v-if="lists.length === 0" class="px-2 py-1 text-sm text-base-content/50">
-                No lists yet
+                No lists yet — create one in the sidebar
               </div>
               <button
                 v-for="list in lists"
-                :key="list.name"
+                :key="list.id"
                 class="btn btn-ghost btn-xs justify-start"
-                :class="{ 'btn-active': repoLists.includes(list.name) }"
-                @click="toggleList(list.name)"
+                :class="{ 'btn-active': repoListIds.has(list.id) }"
+                :disabled="togglingList"
+                @click="toggleList(list)"
               >
-                <span :class="repoLists.includes(list.name) ? 'i-mdi-check-circle text-success' : 'i-mdi-circle-outline'" class="text-sm"></span>
-                {{ list.name }}
+                <span :class="repoListIds.has(list.id) ? 'i-mdi-check-circle text-success' : 'i-mdi-circle-outline'" class="text-sm"></span>
+                <span class="truncate">{{ list.name }}</span>
               </button>
-              <div class="divider my-0"></div>
-              <div class="flex items-center gap-1 px-1">
-                <input
-                  v-model="newListName"
-                  class="input input-xs flex-1"
-                  placeholder="New list name"
-                  @keyup.enter="createAndAdd"
-                />
-                <button class="btn btn-xs btn-primary" :disabled="!newListName" @click="createAndAdd">
-                  <span class="i-mdi-plus text-sm"></span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -116,26 +107,28 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { addRepoToList, removeRepoFromList, getRepoLists, createList, unstarRepo } from '../services/github.js'
+import { updateUserListsForItem, unstarRepo } from '../services/github.js'
 
 const props = defineProps({
   repo: { type: Object, required: true },
   starredAt: { type: String, default: null },
   token: { type: String, required: true },
+  lists: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['unstarred', 'listsUpdated'])
 
 const unstarring = ref(false)
-const newListName = ref('')
-const repoLists = ref(getRepoLists(props.repo.id))
+const togglingList = ref(false)
 
-const lists = computed(() => {
-  try {
-    return JSON.parse(localStorage.getItem('star_lists') || '[]')
-  } catch {
-    return []
+// Which list IDs currently contain this repo (by node_id)
+const repoListIds = computed(() => {
+  const nodeId = props.repo.node_id
+  const ids = new Set()
+  for (const list of props.lists) {
+    if (list.repoNodeIds.has(nodeId)) ids.add(list.id)
   }
+  return ids
 })
 
 function formatCount(n) {
@@ -169,23 +162,27 @@ async function handleUnstar() {
   }
 }
 
-function toggleList(listName) {
-  if (repoLists.value.includes(listName)) {
-    removeRepoFromList(listName, props.repo.id)
-    repoLists.value = repoLists.value.filter(n => n !== listName)
-  } else {
-    addRepoToList(listName, props.repo)
-    repoLists.value = [...repoLists.value, listName]
-  }
-  emit('listsUpdated')
-}
+async function toggleList(list) {
+  const nodeId = props.repo.node_id
+  const isIn = repoListIds.value.has(list.id)
 
-function createAndAdd() {
-  if (!newListName.value.trim()) return
-  createList(newListName.value.trim())
-  addRepoToList(newListName.value.trim(), props.repo)
-  repoLists.value = [...repoLists.value, newListName.value.trim()]
-  newListName.value = ''
-  emit('listsUpdated')
+  // Compute new desired set of list IDs
+  const newIds = [...repoListIds.value]
+  if (isIn) {
+    const idx = newIds.indexOf(list.id)
+    if (idx !== -1) newIds.splice(idx, 1)
+  } else {
+    newIds.push(list.id)
+  }
+
+  togglingList.value = true
+  try {
+    await updateUserListsForItem(props.token, nodeId, newIds)
+    emit('listsUpdated')
+  } catch (e) {
+    alert('Failed to update list: ' + e.message)
+  } finally {
+    togglingList.value = false
+  }
 }
 </script>

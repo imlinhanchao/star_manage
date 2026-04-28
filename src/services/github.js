@@ -64,58 +64,120 @@ function parseTotalFromLink(linkHeader, currentPage, perPage, currentCount) {
   return null
 }
 
-export function getLists() {
-  try {
-    return JSON.parse(localStorage.getItem('star_lists') || '[]')
-  } catch {
-    return []
+// ── GitHub Star Lists (GraphQL) ─────────────────────────────────────────────
+
+async function graphql(token, query, variables = {}) {
+  const res = await axios.post(
+    'https://api.github.com/graphql',
+    { query, variables },
+    { headers: { Authorization: `Bearer ${token}` } },
+  )
+  if (res.data.errors) {
+    throw new Error(res.data.errors.map(e => e.message).join('; '))
   }
+  return res.data.data
 }
 
-export function saveLists(lists) {
-  localStorage.setItem('star_lists', JSON.stringify(lists))
-}
-
-export function addRepoToList(listName, repo) {
-  const lists = getLists()
-  const list = lists.find(l => l.name === listName)
-  if (list) {
-    if (!list.repos.find(r => r.id === repo.id)) {
-      list.repos.push({ id: repo.id, full_name: repo.full_name })
+/**
+ * Returns the viewer's GitHub Star Lists, each with their contained repo node IDs.
+ * Shape: [{ id, name, slug, isPrivate, repoNodeIds: Set<string> }]
+ */
+export async function getUserLists(token) {
+  const query = `
+    query {
+      viewer {
+        lists(first: 100) {
+          nodes {
+            id
+            name
+            slug
+            isPrivate
+            items(first: 100) {
+              nodes {
+                ... on Repository {
+                  id
+                }
+              }
+            }
+          }
+        }
+      }
     }
-  } else {
-    lists.push({ name: listName, repos: [{ id: repo.id, full_name: repo.full_name }] })
-  }
-  saveLists(lists)
-  return lists
+  `
+  const data = await graphql(token, query)
+  return (data.viewer.lists.nodes || []).map(list => ({
+    id: list.id,
+    name: list.name,
+    slug: list.slug,
+    isPrivate: list.isPrivate,
+    repoNodeIds: new Set((list.items.nodes || []).map(n => n.id).filter(Boolean)),
+  }))
 }
 
-export function removeRepoFromList(listName, repoId) {
-  const lists = getLists()
-  const list = lists.find(l => l.name === listName)
-  if (list) {
-    list.repos = list.repos.filter(r => r.id !== repoId)
-  }
-  saveLists(lists)
-  return lists
+/** Creates a new GitHub Star List, returns { id, name }. */
+export async function createUserList(token, name, { description = '', isPrivate = false } = {}) {
+  const mutation = `
+    mutation CreateList($name: String!, $description: String, $isPrivate: Boolean) {
+      createUserList(input: { name: $name, description: $description, isPrivate: $isPrivate }) {
+        list {
+          id
+          name
+          slug
+          isPrivate
+        }
+      }
+    }
+  `
+  const data = await graphql(token, mutation, { name, description, isPrivate })
+  const list = data.createUserList.list
+  return { ...list, repoNodeIds: new Set() }
 }
 
-export function getRepoLists(repoId) {
-  const lists = getLists()
-  return lists.filter(l => l.repos.some(r => r.id === repoId)).map(l => l.name)
+/** Deletes a GitHub Star List by its GraphQL node ID. */
+export async function deleteUserList(token, listId) {
+  const mutation = `
+    mutation DeleteList($listId: ID!) {
+      deleteUserList(input: { listId: $listId }) {
+        clientMutationId
+      }
+    }
+  `
+  await graphql(token, mutation, { listId })
 }
 
-export function createList(name) {
-  const lists = getLists()
-  if (!lists.find(l => l.name === name)) {
-    lists.push({ name, repos: [] })
-    saveLists(lists)
-  }
-  return lists
-}
-
-export function deleteList(name) {
-  const lists = getLists().filter(l => l.name !== name)
-  saveLists(lists)
-  return lists
+/**
+ * Sets which lists a repository belongs to (replaces all memberships atomically).
+ * @param {string} token
+ * @param {string} repoNodeId  – GraphQL node_id of the repository
+ * @param {string[]} listIds   – GraphQL node IDs of all lists the repo should be in
+ * Returns updated [{ id, name, repoNodeIds }] lists.
+ */
+export async function updateUserListsForItem(token, repoNodeId, listIds) {
+  const mutation = `
+    mutation UpdateListsForItem($itemId: ID!, $listIds: [ID!]!) {
+      updateUserListsForItem(input: { itemId: $itemId, listIds: $listIds }) {
+        lists {
+          id
+          name
+          slug
+          isPrivate
+          items(first: 100) {
+            nodes {
+              ... on Repository {
+                id
+              }
+            }
+          }
+        }
+      }
+    }
+  `
+  const data = await graphql(token, mutation, { itemId: repoNodeId, listIds })
+  return (data.updateUserListsForItem.lists || []).map(list => ({
+    id: list.id,
+    name: list.name,
+    slug: list.slug,
+    isPrivate: list.isPrivate,
+    repoNodeIds: new Set((list.items.nodes || []).map(n => n.id).filter(Boolean)),
+  }))
 }
