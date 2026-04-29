@@ -146,6 +146,93 @@ export async function deleteUserList(token, listId) {
 }
 
 /**
+ * Fetches repositories from a specific GitHub Star List using cursor-based pagination.
+ * Returns { repos, totalCount, hasNextPage, endCursor }
+ * Each repo item is shaped as { repo, starred_at: null } to match the REST starred API.
+ */
+export async function getListItems(token, listId, { first = 30, after = null } = {}) {
+  const query = `
+    query GetListItems($listId: ID!, $first: Int!, $after: String) {
+      node(id: $listId) {
+        ... on UserList {
+          items(first: $first, after: $after) {
+            totalCount
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              ... on Repository {
+                databaseId
+                id
+                name
+                nameWithOwner
+                description
+                url
+                isPrivate
+                isFork
+                isArchived
+                stargazerCount
+                forkCount
+                updatedAt
+                primaryLanguage {
+                  name
+                }
+                repositoryTopics(first: 10) {
+                  nodes {
+                    topic {
+                      name
+                    }
+                  }
+                }
+                owner {
+                  login
+                  avatarUrl
+                  url
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `
+  const data = await graphql(token, query, { listId, first, after })
+  if (!data.node) throw new Error('List not found')
+  const items = data.node.items
+  const repos = (items.nodes || []).map(node => ({
+    repo: {
+      id: node.databaseId,
+      node_id: node.id,
+      name: node.name,
+      full_name: node.nameWithOwner,
+      description: node.description,
+      html_url: node.url,
+      private: node.isPrivate,
+      fork: node.isFork,
+      archived: node.isArchived,
+      stargazers_count: node.stargazerCount,
+      forks_count: node.forkCount,
+      updated_at: node.updatedAt,
+      language: node.primaryLanguage?.name ?? null,
+      topics: (node.repositoryTopics?.nodes || []).map(n => n.topic.name),
+      owner: {
+        login: node.owner.login,
+        avatar_url: node.owner.avatarUrl,
+        html_url: node.owner.url,
+      },
+    },
+    starred_at: null,
+  }))
+  return {
+    repos,
+    totalCount: items.totalCount,
+    hasNextPage: items.pageInfo.hasNextPage,
+    endCursor: items.pageInfo.endCursor,
+  }
+}
+
+/**
  * Sets which lists a repository belongs to (replaces all memberships atomically).
  * @param {string} token
  * @param {string} repoNodeId  – GraphQL node_id of the repository
