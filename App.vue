@@ -1,105 +1,98 @@
 <template>
   <div :data-theme="theme" class="min-h-screen bg-base-100 text-base-content">
     <!-- Navbar -->
-    <div class="navbar bg-base-200 shadow-md sticky top-0 z-40">
-      <div class="navbar-start">
-        <label for="lists-drawer" class="btn btn-ghost btn-sm lg:hidden">
+    <div class="navbar bg-base-200 border-b border-base-300 sticky top-0 z-40 min-h-14 px-3">
+      <div class="navbar-start gap-1">
+        <!-- Mobile hamburger -->
+        <label for="lists-drawer" class="btn btn-ghost btn-sm btn-square lg:hidden">
           <span class="i-mdi-menu text-xl"></span>
         </label>
-        <span class="flex items-center gap-2 pl-2 font-bold text-lg">
-          <span class="i-mdi-star text-yellow-400 text-2xl"></span>
+        <span class="flex items-center gap-2 font-bold text-base">
+          <span class="i-mdi-star text-yellow-400 text-lg"></span>
           Star Manage
         </span>
       </div>
       <div class="navbar-center hidden lg:flex">
-        <span v-if="user" class="text-sm text-base-content/60">
-          Managing stars for
-          <a :href="user.html_url" target="_blank" class="font-semibold link link-hover">{{ user.login }}</a>
+        <span v-if="user" class="text-sm text-base-content/50">
+          <a :href="user.html_url" target="_blank" class="font-medium link link-hover text-base-content/70">{{ user.login }}</a>
         </span>
       </div>
-      <div class="navbar-end gap-2">
-        <!-- Lists toggle (desktop) -->
-        <button
-          class="btn btn-ghost btn-sm gap-1 hidden lg:flex"
-          :class="{ 'btn-active': showListsSidebar }"
-          @click="showListsSidebar = !showListsSidebar"
-        >
-          <span class="i-mdi-format-list-bulleted text-base"></span>
-          Lists
-        </button>
-
-        <!-- Theme toggle -->
-        <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
+      <div class="navbar-end gap-1">
+        <label class="swap swap-rotate btn btn-ghost btn-sm btn-square">
           <input type="checkbox" :checked="theme === 'dark'" @change="toggleTheme" />
-          <span class="swap-on i-mdi-weather-night text-xl"></span>
-          <span class="swap-off i-mdi-weather-sunny text-xl"></span>
+          <span class="swap-on i-mdi-weather-night text-lg"></span>
+          <span class="swap-off i-mdi-weather-sunny text-lg"></span>
         </label>
-
-        <!-- Token button -->
         <button class="btn btn-ghost btn-sm gap-1" @click="showTokenInput = true">
           <span class="i-mdi-key-variant text-base"></span>
-          <span class="hidden sm:inline">Token</span>
+          <span class="hidden sm:inline text-sm">Token</span>
         </button>
       </div>
     </div>
 
-    <!-- Main layout: drawer for mobile lists sidebar -->
-    <div class="drawer lg:drawer-open" :class="{ 'drawer-end': false }">
+    <!-- Body: drawer (mobile overlay) + flex layout (desktop) -->
+    <div class="drawer">
       <input id="lists-drawer" type="checkbox" class="drawer-toggle" />
 
-      <!-- Main content -->
-      <div class="drawer-content flex flex-col">
-        <main class="flex-1 p-4 max-w-screen-2xl mx-auto w-full">
-          <!-- No token state -->
-          <div v-if="!token" class="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-            <span class="i-mdi-star text-yellow-400 text-7xl"></span>
-            <h1 class="text-3xl font-bold">GitHub Star Manager</h1>
-            <p class="text-base-content/60 text-center max-w-md">
-              Manage your GitHub starred repositories. Set up your token to get started.
-            </p>
-            <button class="btn btn-primary btn-lg gap-2" @click="showTokenInput = true">
-              <span class="i-mdi-key-variant text-xl"></span>
-              Setup GitHub Token
-            </button>
-          </div>
+      <div class="drawer-content">
+        <!-- No-token landing -->
+        <div v-if="!token" class="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] gap-5 p-8">
+          <span class="i-mdi-star text-yellow-400 text-7xl"></span>
+          <h1 class="text-3xl font-bold">GitHub Star Manager</h1>
+          <p class="text-base-content/60 text-center max-w-sm">
+            Manage and organize your GitHub starred repositories with Lists.
+          </p>
+          <button class="btn btn-primary gap-2" @click="showTokenInput = true">
+            <span class="i-mdi-key-variant"></span>
+            Setup GitHub Token
+          </button>
+        </div>
 
-          <!-- Main star list -->
-          <div v-else class="flex gap-4">
-            <div class="flex-1 min-w-0">
-              <StarList :token="token" :lists="githubLists" @lists-updated="refreshLists" />
+        <!-- Main app layout -->
+        <div v-else class="flex min-h-[calc(100vh-3.5rem)]">
+          <!-- Left sidebar (desktop only) -->
+          <aside class="hidden lg:flex flex-col w-56 xl:w-60 shrink-0 border-r border-base-300">
+            <div class="sticky top-14 overflow-y-auto max-h-[calc(100vh-3.5rem)] p-3">
+              <ListManager
+                :token="token"
+                :lists="githubLists"
+                :loading="listsLoading"
+                :selected-list-id="selectedListId"
+                @select-list="selectedListId = $event"
+                @updated="refreshLists"
+              />
             </div>
-            <!-- Desktop lists sidebar inline -->
-            <div v-if="showListsSidebar" class="hidden lg:block w-72 shrink-0">
-              <div class="sticky top-20 bg-base-200 rounded-xl p-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-                <ListManager
-                  ref="listManagerRef"
-                  :token="token"
-                  :lists="githubLists"
-                  :loading="listsLoading"
-                  @updated="refreshLists"
-                />
-              </div>
-            </div>
-          </div>
-        </main>
+          </aside>
+
+          <!-- Main content -->
+          <main class="flex-1 min-w-0 p-4 lg:p-5">
+            <StarList
+              :token="token"
+              :lists="githubLists"
+              :selected-list-id="selectedListId"
+              @lists-updated="refreshLists"
+            />
+          </main>
+        </div>
       </div>
 
-      <!-- Mobile drawer sidebar -->
+      <!-- Mobile drawer -->
       <div class="drawer-side z-50">
-        <label for="lists-drawer" class="drawer-overlay"></label>
-        <div class="bg-base-100 w-72 min-h-full p-4">
+        <label for="lists-drawer" aria-label="Close navigation menu" class="drawer-overlay"></label>
+        <div class="bg-base-100 w-56 min-h-full p-3 border-r border-base-300">
           <ListManager
-            ref="mobileListManagerRef"
             :token="token"
             :lists="githubLists"
             :loading="listsLoading"
+            :selected-list-id="selectedListId"
+            @select-list="selectedListId = $event"
             @updated="refreshLists"
           />
         </div>
       </div>
     </div>
 
-    <!-- Token Input Modal -->
+    <!-- Token Modal -->
     <TokenInput
       v-if="showTokenInput"
       :has-existing-token="!!token"
@@ -119,13 +112,10 @@ import { getUserLists } from './src/services/github.js'
 const token = ref('')
 const user = ref(null)
 const showTokenInput = ref(false)
-const showListsSidebar = ref(true)
 const theme = ref('light')
 const githubLists = ref([])
 const listsLoading = ref(false)
-
-const listManagerRef = ref(null)
-const mobileListManagerRef = ref(null)
+const selectedListId = ref(null) // null = all, '__no_list__' = no list, or a list GraphQL ID
 
 onMounted(() => {
   const savedToken = localStorage.getItem('github_token')
@@ -138,7 +128,10 @@ onMounted(() => {
   if (savedToken) {
     token.value = savedToken
     if (savedUser) {
-      try { user.value = JSON.parse(savedUser) } catch {}
+      try { user.value = JSON.parse(savedUser) } catch (e) {
+        console.warn('Failed to parse saved user, clearing:', e)
+        localStorage.removeItem('github_user')
+      }
     }
     loadLists()
   } else {
