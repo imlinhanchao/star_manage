@@ -7,4 +7,7 @@ export default defineConfig({
     UnoCSS(),
     vue(),
   ],
+  server: {
+    allowedHosts: true,
+  },
 })
