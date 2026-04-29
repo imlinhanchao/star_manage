@@ -1,104 +1,116 @@
 <template>
-  <div class="card bg-base-200 hover:bg-base-300 transition-colors shadow-sm border border-base-300">
-    <div class="card-body p-4 gap-3">
-      <!-- Header: Owner/Repo name + Language badge -->
-      <div class="flex items-start justify-between gap-2">
+  <div class="card bg-base-100 border border-base-200 hover:border-base-300 hover:shadow-sm transition-all">
+    <div class="card-body p-4 gap-2">
+      <!-- Header -->
+      <div class="flex items-start gap-2">
         <div class="flex-1 min-w-0">
           <a
             :href="repo.html_url"
             target="_blank"
-            class="font-bold text-base link link-hover text-primary truncate block"
-          >
-            {{ repo.full_name }}
-          </a>
-          <p v-if="repo.description" class="text-sm text-base-content/70 mt-1 line-clamp-2">
+            class="font-semibold text-sm link link-hover text-primary block truncate"
+          >{{ repo.full_name }}</a>
+          <p v-if="repo.description" class="text-xs text-base-content/60 mt-0.5 line-clamp-2 leading-relaxed">
             {{ repo.description }}
           </p>
         </div>
         <div class="flex flex-col items-end gap-1 shrink-0">
-          <span v-if="repo.language" class="badge badge-ghost badge-sm">
-            {{ repo.language }}
-          </span>
-          <span v-if="repo.private" class="badge badge-warning badge-sm">Private</span>
+          <span v-if="repo.language" class="badge badge-ghost badge-xs text-xs">{{ repo.language }}</span>
+          <span v-if="repo.private" class="badge badge-warning badge-xs">Private</span>
         </div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="flex items-center gap-4 text-sm text-base-content/60">
-        <span class="flex items-center gap-1">
-          <span class="i-mdi-star text-yellow-400"></span>
-          {{ formatCount(repo.stargazers_count) }}
-        </span>
-        <span class="flex items-center gap-1">
-          <span class="i-mdi-source-fork"></span>
-          {{ formatCount(repo.forks_count) }}
-        </span>
-        <span class="flex items-center gap-1 ml-auto">
-          <span class="i-mdi-clock-outline"></span>
-          {{ formatDate(repo.updated_at) }}
-        </span>
       </div>
 
       <!-- Topics -->
       <div v-if="repo.topics?.length" class="flex flex-wrap gap-1">
         <span
-          v-for="topic in repo.topics.slice(0, 5)"
+          v-for="topic in repo.topics.slice(0, 4)"
           :key="topic"
-          class="badge badge-outline badge-xs"
+          class="badge badge-outline badge-xs text-xs text-base-content/50"
         >{{ topic }}</span>
-        <span v-if="repo.topics.length > 5" class="badge badge-ghost badge-xs">
-          +{{ repo.topics.length - 5 }}
+        <span v-if="repo.topics.length > 4" class="badge badge-ghost badge-xs text-xs">+{{ repo.topics.length - 4 }}</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="flex items-center gap-3 text-xs text-base-content/50">
+        <span class="flex items-center gap-0.5">
+          <span class="i-mdi-star text-yellow-400 text-xs"></span>
+          {{ formatCount(repo.stargazers_count) }}
+        </span>
+        <span class="flex items-center gap-0.5">
+          <span class="i-mdi-source-fork text-xs"></span>
+          {{ formatCount(repo.forks_count) }}
+        </span>
+        <span class="ml-auto flex items-center gap-0.5">
+          <span class="i-mdi-clock-outline text-xs"></span>
+          {{ formatDate(repo.updated_at) }}
         </span>
       </div>
 
-      <!-- Actions -->
-      <div class="flex items-center gap-2 pt-1 border-t border-base-300">
+      <!-- List membership tags -->
+      <div v-if="repoListIds.size > 0" class="flex flex-wrap gap-1">
+        <span
+          v-for="listId in repoListIds"
+          :key="listId"
+          class="badge badge-primary badge-outline badge-xs gap-1 cursor-pointer"
+          @click="toggleListById(listId)"
+        >
+          <span class="i-mdi-format-list-bulleted-square text-xs"></span>
+          {{ getListName(listId) }}
+        </span>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="flex items-center gap-1 pt-1 border-t border-base-200 mt-0.5">
         <!-- List dropdown -->
         <div class="dropdown dropdown-top">
-          <button tabindex="0" class="btn btn-xs btn-ghost gap-1" :disabled="togglingList">
+          <button
+            tabindex="0"
+            class="btn btn-ghost btn-xs gap-1 text-base-content/60"
+            :disabled="togglingList"
+          >
             <span v-if="togglingList" class="loading loading-spinner loading-xs"></span>
-            <span v-else class="i-mdi-playlist-plus text-base"></span>
-            Lists
-            <span v-if="repoListIds.size > 0" class="badge badge-primary badge-xs">{{ repoListIds.size }}</span>
+            <span v-else class="i-mdi-tag-plus-outline text-sm"></span>
+            <span class="text-xs">Lists</span>
           </button>
-          <div tabindex="0" class="dropdown-content z-[1] card card-compact shadow bg-base-100 w-56 border border-base-300">
-            <div class="card-body p-2 gap-1">
-              <p class="font-semibold text-xs px-2 py-1 text-base-content/60">GITHUB LISTS</p>
-              <div v-if="lists.length === 0" class="px-2 py-1 text-sm text-base-content/50">
-                No lists yet — create one in the sidebar
-              </div>
-              <button
-                v-for="list in lists"
-                :key="list.id"
-                class="btn btn-ghost btn-xs justify-start"
-                :class="{ 'btn-active': repoListIds.has(list.id) }"
-                :disabled="togglingList"
-                @click="toggleList(list)"
-              >
-                <span :class="repoListIds.has(list.id) ? 'i-mdi-check-circle text-success' : 'i-mdi-circle-outline'" class="text-sm"></span>
-                <span class="truncate">{{ list.name }}</span>
-              </button>
+          <div tabindex="0" class="dropdown-content z-[1] shadow-lg bg-base-100 rounded-lg border border-base-200 w-52 p-1">
+            <p class="text-xs text-base-content/40 px-2 py-1 font-medium uppercase tracking-wide">Add to list</p>
+            <div v-if="lists.length === 0" class="px-2 py-2 text-xs text-base-content/40">
+              No lists — create one in the sidebar
             </div>
+            <button
+              v-for="list in lists"
+              :key="list.id"
+              class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left hover:bg-base-200 transition-colors"
+              :class="repoListIds.has(list.id) ? 'text-primary' : 'text-base-content'"
+              :disabled="togglingList"
+              @click="toggleList(list)"
+            >
+              <span
+                :class="repoListIds.has(list.id) ? 'i-mdi-check-circle text-primary' : 'i-mdi-circle-outline text-base-content/30'"
+                class="text-base shrink-0"
+              ></span>
+              <span class="flex-1 truncate">{{ list.name }}</span>
+              <span class="text-xs text-base-content/30">{{ list.repoNodeIds.size }}</span>
+            </button>
           </div>
         </div>
 
         <div class="flex-1"></div>
 
-        <!-- Star time -->
-        <span v-if="starredAt" class="text-xs text-base-content/40 flex items-center gap-1">
-          <span class="i-mdi-star-outline text-xs"></span>
-          Starred {{ formatDate(starredAt) }}
+        <!-- Starred date -->
+        <span v-if="starredAt" class="text-xs text-base-content/35 hidden sm:flex items-center gap-0.5">
+          <span class="i-mdi-clock-check-outline text-xs"></span>
+          {{ formatDate(starredAt) }}
         </span>
 
-        <!-- Unstar button -->
+        <!-- Unstar -->
         <button
-          class="btn btn-xs btn-error btn-outline gap-1"
+          class="btn btn-ghost btn-xs text-error/60 hover:text-error gap-1"
+          :aria-label="'Unstar ' + repo.full_name"
           :disabled="unstarring"
           @click="handleUnstar"
         >
           <span v-if="unstarring" class="loading loading-spinner loading-xs"></span>
-          <span v-else class="i-mdi-star-off text-sm"></span>
-          Unstar
+          <span v-else class="i-mdi-star-minus-outline text-sm"></span>
         </button>
       </div>
     </div>
@@ -121,7 +133,7 @@ const emit = defineEmits(['unstarred', 'listsUpdated'])
 const unstarring = ref(false)
 const togglingList = ref(false)
 
-// Which list IDs currently contain this repo (by node_id)
+// Set of list IDs this repo currently belongs to
 const repoListIds = computed(() => {
   const nodeId = props.repo.node_id
   const ids = new Set()
@@ -131,6 +143,10 @@ const repoListIds = computed(() => {
   return ids
 })
 
+function getListName(listId) {
+  return props.lists.find(l => l.id === listId)?.name ?? '…'
+}
+
 function formatCount(n) {
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
   return n
@@ -138,10 +154,7 @@ function formatCount(n) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diff = now - d
-  const days = Math.floor(diff / 86400000)
+  const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000)
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   if (days < 30) return `${days}d ago`
@@ -163,26 +176,23 @@ async function handleUnstar() {
 }
 
 async function toggleList(list) {
-  const nodeId = props.repo.node_id
   const isIn = repoListIds.value.has(list.id)
-
-  // Compute new desired set of list IDs
   const newIds = [...repoListIds.value]
-  if (isIn) {
-    const idx = newIds.indexOf(list.id)
-    if (idx !== -1) newIds.splice(idx, 1)
-  } else {
-    newIds.push(list.id)
-  }
-
+  if (isIn) newIds.splice(newIds.indexOf(list.id), 1)
+  else newIds.push(list.id)
   togglingList.value = true
   try {
-    await updateUserListsForItem(props.token, nodeId, newIds)
+    await updateUserListsForItem(props.token, props.repo.node_id, newIds)
     emit('listsUpdated')
   } catch (e) {
     alert('Failed to update list: ' + e.message)
   } finally {
     togglingList.value = false
   }
+}
+
+async function toggleListById(listId) {
+  const list = props.lists.find(l => l.id === listId)
+  if (list) await toggleList(list)
 }
 </script>
