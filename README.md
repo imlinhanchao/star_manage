@@ -1,4 +1,4 @@
-# star_manage
+# GitHub Star Manage
 
 A pure frontend web app to manage your GitHub starred repositories.
 
