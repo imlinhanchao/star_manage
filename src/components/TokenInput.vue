@@ -4,27 +4,26 @@
       <div class="card-body gap-4">
         <h2 class="card-title text-2xl">
           <span class="i-mdi-github text-3xl"></span>
-          Star Manage
+          {{ t('token.title') }}
         </h2>
         <p class="text-base-content/70 text-sm">
-          Enter your GitHub Personal Access Token to manage your starred repositories.
-          The token is stored only in your browser's localStorage.
+          {{ t('token.desc') }}
         </p>
         <div class="form-control gap-2">
           <label class="label">
-            <span class="label-text font-semibold">GitHub Token</span>
+            <span class="label-text font-semibold">{{ t('token.label') }}</span>
             <a
               href="https://github.com/settings/tokens/new?scopes=public_repo,user&description=star_manage"
               target="_blank"
               class="label-text-alt link link-primary"
-            >Generate token ↗</a>
+            >{{ t('token.generate') }}</a>
           </label>
           <div class="join w-full">
             <input
               v-model="tokenInput"
               :type="showToken ? 'text' : 'password'"
               class="input input-bordered join-item flex-1"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              :placeholder="t('token.placeholder')"
               @keyup.enter="handleSave"
             />
             <button class="btn btn-ghost join-item" @click="showToken = !showToken">
@@ -38,12 +37,12 @@
         </div>
         <div class="card-actions justify-end mt-2">
           <button v-if="hasExistingToken" class="btn btn-ghost" @click="$emit('cancel')">
-            Cancel
+            {{ t('token.cancel') }}
           </button>
           <button class="btn btn-primary" :disabled="loading || !tokenInput" @click="handleSave">
             <span v-if="loading" class="loading loading-spinner loading-sm"></span>
             <span v-else class="i-mdi-check text-lg"></span>
-            {{ loading ? 'Validating...' : 'Save & Connect' }}
+            {{ loading ? t('token.validating') : t('token.save') }}
           </button>
         </div>
       </div>
@@ -53,7 +52,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { validateToken } from '../services/github.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   hasExistingToken: Boolean,
@@ -76,9 +78,9 @@ async function handleSave() {
     emit('saved', { token: tokenInput.value.trim(), user })
   } catch (e) {
     if (e.response?.status === 401) {
-      error.value = 'Invalid token. Please check and try again.'
+      error.value = t('token.invalid')
     } else {
-      error.value = e.message || 'Failed to validate token.'
+      error.value = e.message || t('token.failed')
     }
   } finally {
     loading.value = false

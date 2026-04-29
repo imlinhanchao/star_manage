@@ -1,0 +1,73 @@
+{
+  "nav": {
+    "title": "Star Manage",
+    "token": "Token",
+    "switchLang": "中文"
+  },
+  "landing": {
+    "title": "GitHub Star Manager",
+    "subtitle": "Manage and organize your GitHub starred repositories with Lists.",
+    "setupToken": "Setup GitHub Token"
+  },
+  "token": {
+    "title": "Star Manage",
+    "desc": "Enter your GitHub Personal Access Token to manage your starred repositories. The token is stored only in your browser's localStorage.",
+    "label": "GitHub Token",
+    "generate": "Generate token ↗",
+    "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+    "cancel": "Cancel",
+    "save": "Save & Connect",
+    "validating": "Validating...",
+    "invalid": "Invalid token. Please check and try again.",
+    "failed": "Failed to validate token."
+  },
+  "listManager": {
+    "allStars": "All Stars",
+    "noList": "No List",
+    "lists": "Lists",
+    "newList": "List name...",
+    "noLists": "No lists yet",
+    "deleteConfirm": "Delete list \"{name}\"? This cannot be undone."
+  },
+  "starList": {
+    "sort": {
+      "starred": "Starred",
+      "updated": "Updated",
+      "stars": "Stars",
+      "newest": "Newest",
+      "oldest": "Oldest"
+    },
+    "searchPlaceholder": "Search repos...",
+    "perPage": " / page",
+    "filter": {
+      "reposSortApplies": "repos · sort applies per page",
+      "shownOnPage": "shown on this page"
+    },
+    "retry": "Retry",
+    "empty": {
+      "noRepos": "No repositories found",
+      "allInList": "All starred repos on this page are in a list.",
+      "listEmpty": "This list is empty."
+    },
+    "pagination": {
+      "repos": "repos",
+      "stars": "stars"
+    }
+  },
+  "repoCard": {
+    "private": "Private",
+    "lists": "Lists",
+    "addToList": "Add to list",
+    "noLists": "No lists — create one in the sidebar",
+    "date": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daysAgo": "{days}d ago",
+      "monthsAgo": "{months}mo ago",
+      "yearsAgo": "{years}y ago"
+    },
+    "unstarConfirm": "Unstar {name}?",
+    "unstarFailed": "Failed to unstar: {msg}",
+    "updateListFailed": "Failed to update list: {msg}"
+  }
+}

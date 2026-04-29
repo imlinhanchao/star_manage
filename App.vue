@@ -9,7 +9,7 @@
         </label>
         <span class="flex items-center gap-2 font-bold text-base">
           <span class="i-mdi-star text-yellow-400 text-lg"></span>
-          Star Manage
+          {{ t('nav.title') }}
         </span>
       </div>
       <div class="navbar-center hidden lg:flex">
@@ -28,9 +28,12 @@
           <span class="swap-on i-mdi-weather-night text-lg"></span>
           <span class="swap-off i-mdi-weather-sunny text-lg"></span>
         </label>
+        <button class="btn btn-ghost btn-sm font-semibold" @click="toggleLocale">
+          {{ t('nav.switchLang') }}
+        </button>
         <button class="btn btn-ghost btn-sm gap-1" @click="showTokenInput = true">
           <span class="i-mdi-key-variant text-base"></span>
-          <span class="hidden sm:inline text-sm">Token</span>
+          <span class="hidden sm:inline text-sm">{{ t('nav.token') }}</span>
         </button>
       </div>
     </div>
@@ -43,13 +46,13 @@
         <!-- No-token landing -->
         <div v-if="!token" class="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] gap-5 p-8">
           <span class="i-mdi-star text-yellow-400 text-7xl"></span>
-          <h1 class="text-3xl font-bold">GitHub Star Manager</h1>
+          <h1 class="text-3xl font-bold">{{ t('landing.title') }}</h1>
           <p class="text-base-content/60 text-center max-w-sm">
-            Manage and organize your GitHub starred repositories with Lists.
+            {{ t('landing.subtitle') }}
           </p>
           <button class="btn btn-primary gap-2" @click="showTokenInput = true">
             <span class="i-mdi-key-variant"></span>
-            Setup GitHub Token
+            {{ t('landing.setupToken') }}
           </button>
         </div>
 
@@ -109,10 +112,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import TokenInput from './src/components/TokenInput.vue'
 import StarList from './src/components/StarList.vue'
 import ListManager from './src/components/ListManager.vue'
 import { getUserLists } from './src/services/github.js'
+
+const { t, locale } = useI18n()
 
 const token = ref('')
 const user = ref(null)
@@ -126,6 +132,11 @@ onMounted(() => {
   const savedToken = localStorage.getItem('github_token')
   const savedUser = localStorage.getItem('github_user')
   const savedTheme = localStorage.getItem('star_theme') || 'winter'
+  const savedLang = localStorage.getItem('star_lang')
+
+  if (savedLang) {
+    locale.value = savedLang
+  }
 
   theme.value = savedTheme
   document.documentElement.setAttribute('data-theme', savedTheme)
@@ -148,6 +159,11 @@ function toggleTheme() {
   theme.value = theme.value === 'winter' ? 'forest' : 'winter'
   localStorage.setItem('star_theme', theme.value)
   document.documentElement.setAttribute('data-theme', theme.value)
+}
+
+function toggleLocale() {
+  locale.value = locale.value === 'en' ? 'zh' : 'en'
+  localStorage.setItem('star_lang', locale.value)
 }
 
 function handleTokenSaved({ token: t, user: u }) {

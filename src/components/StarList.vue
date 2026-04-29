@@ -14,7 +14,7 @@
       </div>
       <button class="btn btn-xs btn-ghost gap-1" @click="toggleDirection">
         <span :class="sortDirection === 'desc' ? 'i-mdi-arrow-down' : 'i-mdi-arrow-up'" class="text-sm"></span>
-        {{ sortDirection === 'desc' ? 'Newest' : 'Oldest' }}
+        {{ sortDirection === 'desc' ? t('starList.sort.newest') : t('starList.sort.oldest') }}
       </button>
 
       <div class="flex-1"></div>
@@ -25,7 +25,7 @@
         <input
           v-model="searchQuery"
           class="input input-bordered input-xs pl-7 w-44"
-          placeholder="Search repos..."
+          :placeholder="t('starList.searchPlaceholder')"
         />
         <button v-if="searchQuery" class="absolute right-1 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-square" @click="searchQuery = ''">
           <span class="i-mdi-close text-xs"></span>
@@ -34,7 +34,7 @@
 
       <!-- Per page -->
       <select v-model="perPage" class="select select-bordered select-xs w-24" @change="onPerPageChange">
-        <option v-for="n in [10, 20, 30, 50]" :key="n" :value="n">{{ n }} / page</option>
+        <option v-for="n in [10, 20, 30, 50]" :key="n" :value="n">{{ n }}{{ t('starList.perPage') }}</option>
       </select>
     </div>
 
@@ -47,8 +47,8 @@
           <span class="i-mdi-close text-xs"></span>
         </button>
       </span>
-      <span v-if="isListMode" class="text-xs text-base-content/40">{{ totalCount }} repos · sort applies per page</span>
-      <span v-else class="text-xs text-base-content/40">{{ displayRepos.length }} shown on this page</span>
+      <span v-if="isListMode" class="text-xs text-base-content/40">{{ totalCount }} {{ t('starList.filter.reposSortApplies') }}</span>
+      <span v-else class="text-xs text-base-content/40">{{ displayRepos.length }} {{ t('starList.filter.shownOnPage') }}</span>
     </div>
 
     <!-- Loading -->
@@ -60,15 +60,15 @@
     <div v-else-if="error" class="alert alert-error text-sm">
       <span class="i-mdi-alert-circle"></span>
       <span>{{ error }}</span>
-      <button class="btn btn-sm btn-ghost" @click="isListMode ? loadListItems(currentPage) : loadRepos()">Retry</button>
+      <button class="btn btn-sm btn-ghost" @click="isListMode ? loadListItems(currentPage) : loadRepos()">{{ t('starList.retry') }}</button>
     </div>
 
     <!-- Empty -->
     <div v-else-if="displayRepos.length === 0" class="text-center py-24 text-base-content/40">
       <span class="i-mdi-star-off text-5xl block mb-3"></span>
-      <p class="font-medium">No repositories found</p>
-      <p v-if="selectedListId === '__no_list__'" class="text-sm mt-1">All starred repos on this page are in a list.</p>
-      <p v-else-if="isListMode" class="text-sm mt-1">This list is empty.</p>
+      <p class="font-medium">{{ t('starList.empty.noRepos') }}</p>
+      <p v-if="selectedListId === '__no_list__'" class="text-sm mt-1">{{ t('starList.empty.allInList') }}</p>
+      <p v-else-if="isListMode" class="text-sm mt-1">{{ t('starList.empty.listEmpty') }}</p>
     </div>
 
     <!-- Grid -->
@@ -97,7 +97,7 @@
       <button class="btn btn-sm btn-ghost btn-square" :disabled="!listHasNextPage" @click="goToPage(currentPage + 1)">
         <span class="i-mdi-chevron-right"></span>
       </button>
-      <span class="text-xs text-base-content/50 ml-2" v-if="totalCount">· {{ totalCount }} repos</span>
+      <span class="text-xs text-base-content/50 ml-2" v-if="totalCount">· {{ totalCount }} {{ t('starList.pagination.repos') }}</span>
     </div>
 
     <!-- Pagination: page numbers (REST mode) -->
@@ -126,7 +126,7 @@
       </button>
       <span class="text-xs text-base-content/50 ml-2">
         {{ currentPage }} / {{ totalPages }}
-        <span v-if="totalCount"> · {{ totalCount }} stars</span>
+        <span v-if="totalCount"> · {{ totalCount }} {{ t('starList.pagination.stars') }}</span>
       </span>
     </div>
   </div>
@@ -134,8 +134,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import RepoCard from './RepoCard.vue'
 import { getStarredRepos, getListItems } from '../services/github.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   token: { type: String, required: true },
@@ -145,11 +148,11 @@ const props = defineProps({
 
 const emit = defineEmits(['listsUpdated', 'update:selectedListId'])
 
-const sortOptions = [
-  { label: 'Starred', value: 'created' },
-  { label: 'Updated', value: 'updated' },
-  { label: 'Stars', value: 'stars' },
-]
+const sortOptions = computed(() => [
+  { label: t('starList.sort.starred'), value: 'created' },
+  { label: t('starList.sort.updated'), value: 'updated' },
+  { label: t('starList.sort.stars'), value: 'stars' },
+])
 
 const loading = ref(false)
 const error = ref('')

@@ -14,7 +14,7 @@
           </p>
         </div>
         <div v-if="repo.private" class="flex flex-col items-end gap-1 shrink-0 mt-1">
-          <span class="badge badge-warning badge-sm font-medium">Private</span>
+          <span class="badge badge-warning badge-sm font-medium">{{ t('repoCard.private') }}</span>
         </div>
       </div>
 
@@ -70,12 +70,12 @@
           >
             <span v-if="togglingList" class="loading loading-spinner loading-xs text-primary"></span>
             <span v-else class="i-mdi-tag-plus-outline text-[15px]"></span>
-            <span class="text-xs font-medium">Lists</span>
+            <span class="text-xs font-medium">{{ t('repoCard.lists') }}</span>
           </button>
-          <div tabindex="0" class="dropdown-content z-[1] shadow-xl bg-base-100 rounded-xl border border-base-200/80 w-56 p-1.5 mb-1">
-            <p class="text-[10px] text-base-content/40 px-2.5 py-1.5 font-bold uppercase tracking-wider">Add to list</p>
+          <div tabindex="0" class="dropdown-content z-[1] shadow-xl bg-base-100 rounded-xl border border-base-200/80 w-56 p-1.5 mb-1 max-h-64 overflow-y-auto overscroll-contain">
+            <p class="text-[10px] text-base-content/40 px-2.5 py-1.5 font-bold uppercase tracking-wider">{{ t('repoCard.addToList') }}</p>
             <div v-if="lists.length === 0" class="px-2.5 py-3 text-sm text-base-content/50 text-center">
-              No lists — create one in the sidebar
+              {{ t('repoCard.noLists') }}
             </div>
             <button
               v-for="list in lists"
@@ -120,7 +120,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { updateUserListsForItem, unstarRepo } from '../services/github.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   repo: { type: Object, required: true },
@@ -156,21 +159,21 @@ function formatCount(n) {
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 30) return `${days}d ago`
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`
-  return `${Math.floor(days / 365)}y ago`
+  if (days === 0) return t('repoCard.date.today')
+  if (days === 1) return t('repoCard.date.yesterday')
+  if (days < 30) return t('repoCard.date.daysAgo', { days })
+  if (days < 365) return t('repoCard.date.monthsAgo', { months: Math.floor(days / 30) })
+  return t('repoCard.date.yearsAgo', { years: Math.floor(days / 365) })
 }
 
 async function handleUnstar() {
-  if (!confirm(`Unstar ${props.repo.full_name}?`)) return
+  if (!confirm(t('repoCard.unstarConfirm', { name: props.repo.full_name }))) return
   unstarring.value = true
   try {
     await unstarRepo(props.token, props.repo.owner.login, props.repo.name)
     emit('unstarred', props.repo.id)
   } catch (e) {
-    alert('Failed to unstar: ' + (e.response?.data?.message || e.message))
+    alert(t('repoCard.unstarFailed', { msg: e.response?.data?.message || e.message }))
   } finally {
     unstarring.value = false
   }
@@ -186,7 +189,7 @@ async function toggleList(list) {
     await updateUserListsForItem(props.token, props.repo.node_id, newIds)
     emit('listsUpdated')
   } catch (e) {
-    alert('Failed to update list: ' + e.message)
+    alert(t('repoCard.updateListFailed', { msg: e.message }))
   } finally {
     togglingList.value = false
   }
