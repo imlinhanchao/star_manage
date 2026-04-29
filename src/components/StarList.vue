@@ -47,7 +47,8 @@
           <span class="i-mdi-close text-xs"></span>
         </button>
       </span>
-      <span class="text-xs text-base-content/40">{{ displayRepos.length }} shown on this page</span>
+      <span v-if="isListMode" class="text-xs text-base-content/40">{{ totalCount }} repos · sort applies per page</span>
+      <span v-else class="text-xs text-base-content/40">{{ displayRepos.length }} shown on this page</span>
     </div>
 
     <!-- Loading -->
@@ -59,7 +60,7 @@
     <div v-else-if="error" class="alert alert-error text-sm">
       <span class="i-mdi-alert-circle"></span>
       <span>{{ error }}</span>
-      <button class="btn btn-sm btn-ghost" @click="loadRepos">Retry</button>
+      <button class="btn btn-sm btn-ghost" @click="isListMode ? loadListItems(currentPage) : loadRepos()">Retry</button>
     </div>
 
     <!-- Empty -->
@@ -67,7 +68,7 @@
       <span class="i-mdi-star-off text-5xl block mb-3"></span>
       <p class="font-medium">No repositories found</p>
       <p v-if="selectedListId === '__no_list__'" class="text-sm mt-1">All starred repos on this page are in a list.</p>
-      <p v-else-if="selectedListId" class="text-sm mt-1">No repos from this list on the current page.</p>
+      <p v-else-if="isListMode" class="text-sm mt-1">This list is empty.</p>
     </div>
 
     <!-- Grid -->
@@ -80,12 +81,27 @@
         :token="token"
         :lists="lists"
         @unstarred="handleUnstarred"
-        @lists-updated="$emit('listsUpdated')"
+        @lists-updated="handleListsUpdated"
       />
     </div>
 
-    <!-- Pagination -->
-    <div v-if="!loading && totalPages > 1" class="flex justify-center items-center gap-1 mt-6 flex-wrap">
+    <!-- Pagination: cursor-based (list mode) -->
+    <div v-if="!loading && isListMode && (totalPages > 1 || currentPage > 1)" class="flex justify-center items-center gap-1 mt-6">
+      <button class="btn btn-sm btn-ghost btn-square" :disabled="currentPage === 1" @click="goToPage(1)">
+        <span class="i-mdi-chevron-double-left"></span>
+      </button>
+      <button class="btn btn-sm btn-ghost btn-square" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
+        <span class="i-mdi-chevron-left"></span>
+      </button>
+      <span class="text-sm px-3 tabular-nums">{{ currentPage }} / {{ totalPages }}</span>
+      <button class="btn btn-sm btn-ghost btn-square" :disabled="!listHasNextPage" @click="goToPage(currentPage + 1)">
+        <span class="i-mdi-chevron-right"></span>
+      </button>
+      <span class="text-xs text-base-content/50 ml-2" v-if="totalCount">· {{ totalCount }} repos</span>
+    </div>
+
+    <!-- Pagination: page numbers (REST mode) -->
+    <div v-if="!loading && !isListMode && totalPages > 1" class="flex justify-center items-center gap-1 mt-6 flex-wrap">
       <button class="btn btn-sm btn-ghost btn-square" :disabled="currentPage === 1" @click="goToPage(1)">
         <span class="i-mdi-chevron-double-left"></span>
       </button>
@@ -119,7 +135,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import RepoCard from './RepoCard.vue'
-import { getStarredRepos } from '../services/github.js'
+import { getStarredRepos, getListItems } from '../services/github.js'
 
 const props = defineProps({
   token: { type: String, required: true },
@@ -146,6 +162,14 @@ const sortDirection = ref('desc')
 const searchQuery = ref('')
 const totalPages = ref(1)
 
+// Cursor-based pagination state for list mode.
+// listCursorMap[page] = the `after` cursor to use when fetching that page.
+// Page 1 always uses null (no cursor), so it is pre-populated.
+const listCursorMap = ref({ 1: null })
+const listHasNextPage = ref(false)
+
+const isListMode = computed(() => !!props.selectedListId && props.selectedListId !== '__no_list__')
+
 const activeFilterLabel = computed(() => {
   if (props.selectedListId === '__no_list__') return 'No List'
   if (props.selectedListId) {
@@ -158,16 +182,11 @@ const activeFilterLabel = computed(() => {
 const displayRepos = computed(() => {
   let items = allRepos.value
 
-  // Filter by selected list
-  if (props.selectedListId === '__no_list__' && props.lists.length > 0) {
+  // In non-list mode, apply client-side list filter for 'no list' view
+  if (!isListMode.value && props.selectedListId === '__no_list__' && props.lists.length > 0) {
     items = items.filter(item =>
       !props.lists.some(list => list.repoNodeIds.has(item.repo.node_id)),
     )
-  } else if (props.selectedListId && props.selectedListId !== '__no_list__' && props.lists.length > 0) {
-    const selectedList = props.lists.find(l => l.id === props.selectedListId)
-    if (selectedList) {
-      items = items.filter(item => selectedList.repoNodeIds.has(item.repo.node_id))
-    }
   }
 
   // Search filter
@@ -180,13 +199,20 @@ const displayRepos = computed(() => {
     )
   }
 
-  // Client-side star sort
+  // Client-side sort
   if (sortField.value === 'stars') {
     items = [...items].sort((a, b) => {
       const diff = a.repo.stargazers_count - b.repo.stargazers_count
       return sortDirection.value === 'desc' ? -diff : diff
     })
+  } else if (isListMode.value && sortField.value === 'updated') {
+    // In list mode 'updated' is client-side (no server-side sort on list items)
+    items = [...items].sort((a, b) => {
+      const diff = new Date(a.repo.updated_at) - new Date(b.repo.updated_at)
+      return sortDirection.value === 'desc' ? -diff : diff
+    })
   }
+  // In list mode + 'created': no starred_at available; keep API default order
 
   return items
 })
@@ -226,35 +252,102 @@ async function loadRepos() {
   }
 }
 
+async function loadListItems(page = 1) {
+  if (!props.selectedListId || props.selectedListId === '__no_list__') return
+  loading.value = true
+  error.value = ''
+  try {
+    const after = listCursorMap.value[page] ?? null
+    const { repos, totalCount: tc, hasNextPage, endCursor } = await getListItems(
+      props.token,
+      props.selectedListId,
+      { first: perPage.value, after },
+    )
+    allRepos.value = repos
+    totalCount.value = tc
+    totalPages.value = Math.max(1, Math.ceil(tc / perPage.value))
+    listHasNextPage.value = hasNextPage
+    if (hasNextPage && endCursor) {
+      listCursorMap.value = { ...listCursorMap.value, [page + 1]: endCursor }
+    }
+  } catch (e) {
+    error.value = e.message || 'Failed to load list items'
+  } finally {
+    loading.value = false
+  }
+}
+
 function setSortField(field) {
   if (sortField.value === field) return
   sortField.value = field
-  currentPage.value = 1
-  loadRepos()
+  if (!isListMode.value) {
+    currentPage.value = 1
+    loadRepos()
+  }
+  // In list mode, sort is client-side; displayRepos recomputes automatically
 }
 
 function toggleDirection() {
   sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
-  currentPage.value = 1
-  loadRepos()
+  if (!isListMode.value) {
+    currentPage.value = 1
+    loadRepos()
+  }
+  // In list mode, sort is client-side; displayRepos recomputes automatically
 }
 
 function goToPage(page) {
   if (page < 1 || page > totalPages.value) return
-  currentPage.value = page
-  loadRepos()
+  if (isListMode.value) {
+    if (!(page in listCursorMap.value)) return
+    currentPage.value = page
+    loadListItems(page)
+  } else {
+    currentPage.value = page
+    loadRepos()
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function onPerPageChange() {
   currentPage.value = 1
-  loadRepos()
+  if (isListMode.value) {
+    listCursorMap.value = { 1: null }
+    listHasNextPage.value = false
+    loadListItems(1)
+  } else {
+    loadRepos()
+  }
 }
 
 function handleUnstarred(repoId) {
   allRepos.value = allRepos.value.filter(item => item.repo.id !== repoId)
   if (totalCount.value > 0) totalCount.value--
 }
+
+function handleListsUpdated() {
+  emit('listsUpdated')
+  // Reload current page so items removed from this list disappear immediately
+  if (isListMode.value) {
+    loadListItems(currentPage.value)
+  }
+}
+
+// Switch data source when the selected list changes
+watch(
+  () => props.selectedListId,
+  (newId) => {
+    currentPage.value = 1
+    listCursorMap.value = { 1: null }
+    listHasNextPage.value = false
+    allRepos.value = []
+    if (newId && newId !== '__no_list__') {
+      loadListItems(1)
+    } else {
+      loadRepos()
+    }
+  },
+)
 
 onMounted(loadRepos)
 </script>
