@@ -23,14 +23,24 @@
     <!-- Section header: Lists -->
     <div class="flex items-center justify-between px-2 mb-1">
       <span class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Lists</span>
-      <button
-        v-if="token"
-        class="btn btn-ghost btn-xs btn-square"
-        title="New list"
-        @click="showCreate = !showCreate"
-      >
-        <span class="i-mdi-plus text-base"></span>
-      </button>
+      <span>
+        <button
+          v-if="token"
+          class="btn btn-ghost btn-xs btn-square"
+          title="New list"
+          @click="showCreate = !showCreate"
+        >
+          <span class="i-mdi-plus text-base"></span>
+        </button>
+        <button
+          v-if="token"
+          class="btn btn-ghost btn-xs btn-square"
+          title="Refresh lists"
+          @click="emit('updated')"
+        >
+          <span class="i-mdi-refresh text-base"></span>
+        </button>
+      </span>
     </div>
 
     <!-- Create form -->

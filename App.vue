@@ -13,7 +13,12 @@
         </span>
       </div>
       <div class="navbar-center hidden lg:flex">
-        <span v-if="user" class="text-sm text-base-content/50">
+        <span v-if="user" class="text-xl text-base-content/50 flex items-center gap-2">
+          <div class="avatar">
+            <div class="w-5 rounded-full ring-secondary ring-offset-base-100 ring-2 ring-offset-2">
+              <img :src="user.avatar_url" alt="User Avatar" />
+            </div>  
+          </div>
           <a :href="user.html_url" target="_blank" class="font-medium link link-hover text-base-content/70">{{ user.login }}</a>
         </span>
       </div>
@@ -120,7 +125,7 @@ const selectedListId = ref(null) // null = all, '__no_list__' = no list, or a li
 onMounted(() => {
   const savedToken = localStorage.getItem('github_token')
   const savedUser = localStorage.getItem('github_user')
-  const savedTheme = localStorage.getItem('star_theme') || 'light'
+  const savedTheme = localStorage.getItem('star_theme') || 'winter'
 
   theme.value = savedTheme
   document.documentElement.setAttribute('data-theme', savedTheme)
@@ -140,7 +145,7 @@ onMounted(() => {
 })
 
 function toggleTheme() {
-  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  theme.value = theme.value === 'winter' ? 'forest' : 'winter'
   localStorage.setItem('star_theme', theme.value)
   document.documentElement.setAttribute('data-theme', theme.value)
 }
