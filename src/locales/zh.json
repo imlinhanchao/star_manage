@@ -1,0 +1,73 @@
+{
+  "nav": {
+    "title": "Star 管理",
+    "token": "凭证",
+    "switchLang": "EN"
+  },
+  "landing": {
+    "title": "GitHub Star 管理器",
+    "subtitle": "通过列表功能管理和分类你收藏的 GitHub 仓库。",
+    "setupToken": "配置 GitHub Token"
+  },
+  "token": {
+    "title": "Star 管理",
+    "desc": "输入你的 GitHub Personal Access Token 来管理你点赞的仓库。Token 仅保存在你的浏览器本地存储中。",
+    "label": "GitHub Token",
+    "generate": "生成 token ↗",
+    "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
+    "cancel": "取消",
+    "save": "保存并连接",
+    "validating": "验证中...",
+    "invalid": "Token无效，请检查后重试。",
+    "failed": "Token验证失败。"
+  },
+  "listManager": {
+    "allStars": "所有标星",
+    "noList": "未分类",
+    "lists": "列表",
+    "newList": "列表名称...",
+    "noLists": "暂无列表",
+    "deleteConfirm": "确定要删除列表“{name}”吗？此操作无法撤销。"
+  },
+  "starList": {
+    "sort": {
+      "starred": "加星时间",
+      "updated": "更新时间",
+      "stars": "Stars数量",
+      "newest": "最新",
+      "oldest": "最旧"
+    },
+    "searchPlaceholder": "搜索仓库...",
+    "perPage": " / 页",
+    "filter": {
+      "reposSortApplies": "个仓库 · 仅在当前页排序",
+      "shownOnPage": "个仓库在此页显示"
+    },
+    "retry": "重试",
+    "empty": {
+      "noRepos": "未找到仓库",
+      "allInList": "当前页面中所有标星仓库均已被分类至列表中。",
+      "listEmpty": "此列表为空。"
+    },
+    "pagination": {
+      "repos": "个仓库",
+      "stars": "个星号"
+    }
+  },
+  "repoCard": {
+    "private": "私有",
+    "lists": "列表",
+    "addToList": "选择列表",
+    "noLists": "暂无列表 — 请在侧边栏创建",
+    "date": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "daysAgo": "{days} 天前",
+      "monthsAgo": "{months} 个月前",
+      "yearsAgo": "{years} 年前"
+    },
+    "unstarConfirm": "确定要取消收藏 {name} 吗？",
+    "unstarFailed": "取消收藏失败：{msg}",
+    "updateListFailed": "更新列表失败：{msg}"
+  }
+}

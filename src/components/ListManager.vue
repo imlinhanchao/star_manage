@@ -8,7 +8,7 @@
         @click="emit('select-list', null)"
       >
         <span class="i-mdi-star text-yellow-400 text-base shrink-0"></span>
-        <span class="flex-1 truncate">All Stars</span>
+        <span class="flex-1 truncate">{{ t('listManager.allStars') }}</span>
       </button>
       <button
         class="nav-item"
@@ -16,13 +16,13 @@
         @click="emit('select-list', selectedListId === '__no_list__' ? null : '__no_list__')"
       >
         <span class="i-mdi-filter-off-outline text-base-content/40 text-base shrink-0"></span>
-        <span class="flex-1 truncate text-base-content/70">No List</span>
+        <span class="flex-1 truncate text-base-content/70">{{ t('listManager.noList') }}</span>
       </button>
     </div>
 
     <!-- Section header: Lists -->
     <div class="flex items-center justify-between px-2 mb-1">
-      <span class="text-xs font-semibold uppercase tracking-wide text-base-content/40">Lists</span>
+      <span class="text-xs font-semibold uppercase tracking-wide text-base-content/40">{{ t('listManager.lists') }}</span>
       <span>
         <button
           v-if="token"
@@ -48,7 +48,7 @@
       <input
         v-model="newName"
         class="input input-xs flex-1 input-bordered"
-        placeholder="List name..."
+        :placeholder="t('listManager.newList')"
         :disabled="creating"
         autofocus
         @keyup.enter="handleCreate"
@@ -67,7 +67,7 @@
 
     <!-- No lists -->
     <div v-else-if="!loading && lists.length === 0 && token" class="text-xs text-base-content/40 px-3 py-2">
-      No lists yet
+      {{ t('listManager.noLists') }}
     </div>
 
     <!-- List items -->
@@ -109,7 +109,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { createUserList, deleteUserList } from '../services/github.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   token: { type: String, default: '' },
@@ -141,7 +144,7 @@ async function handleCreate() {
 }
 
 async function handleDeleteList(list) {
-  if (!confirm(`Delete list "${list.name}"? This cannot be undone.`)) return
+  if (!confirm(t('listManager.deleteConfirm', { name: list.name }))) return
   deleting.value = list.id
   try {
     await deleteUserList(props.token, list.id)
