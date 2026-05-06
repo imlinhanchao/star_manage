@@ -23,11 +23,12 @@
       <div class="relative">
         <span class="i-mdi-magnify absolute left-2 top-1/2 -translate-y-1/2 text-base-content/40 text-sm pointer-events-none"></span>
         <input
-          v-model="searchQuery"
+          v-model="inputValue"
           class="input input-bordered input-xs pl-7 w-44"
           :placeholder="t('starList.searchPlaceholder')"
+          @keyup.enter="commitSearch"
         />
-        <button v-if="searchQuery" class="absolute right-1 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-square" @click="searchQuery = ''">
+        <button v-if="inputValue" class="absolute right-1 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-square" @click="clearSearch">
           <span class="i-mdi-close text-xs"></span>
         </button>
       </div>
@@ -165,6 +166,9 @@ const sortField = ref('created')
 const sortDirection = ref('desc')
 const searchQuery = ref('')
 const totalPages = ref(1)
+
+// inputValue is what the user types; searchQuery is committed only on Enter
+const inputValue = ref('')
 
 // All repos fetched for full-dataset search (populated when searchQuery becomes non-empty)
 const searchAllRepos = ref([])
@@ -304,6 +308,15 @@ async function fetchAllForSearch() {
   }
 }
 
+function commitSearch() {
+  searchQuery.value = inputValue.value
+}
+
+function clearSearch() {
+  inputValue.value = ''
+  searchQuery.value = ''
+}
+
 function setSortField(field) {
   if (sortField.value === field) return
   sortField.value = field
@@ -380,18 +393,12 @@ watch(
     listHasNextPage.value = false
     allRepos.value = []
     searchAllRepos.value = []
+    inputValue.value = ''
+    searchQuery.value = ''
     if (newId && newId !== '__no_list__') {
-      if (isSearchActive.value) {
-        fetchAllForSearch()
-      } else {
-        loadListItems(1)
-      }
+      loadListItems(1)
     } else {
-      if (isSearchActive.value) {
-        fetchAllForSearch()
-      } else {
-        loadRepos()
-      }
+      loadRepos()
     }
   },
 )
