@@ -19,7 +19,10 @@
     "save": "保存并连接",
     "validating": "验证中...",
     "invalid": "Token无效，请检查后重试。",
-    "failed": "Token验证失败。"
+    "failed": "Token验证失败。",
+    "mirror": "API 镜像地址",
+    "mirrorPlaceholder": "https://api.github.com",
+    "mirrorDesc": "可选。若无法访问 api.github.com，可填写镜像或代理的基础地址。"
   },
   "listManager": {
     "allStars": "所有标星",

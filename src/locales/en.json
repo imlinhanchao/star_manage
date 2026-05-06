@@ -19,7 +19,10 @@
     "save": "Save & Connect",
     "validating": "Validating...",
     "invalid": "Invalid token. Please check and try again.",
-    "failed": "Failed to validate token."
+    "failed": "Failed to validate token.",
+    "mirror": "API Mirror URL",
+    "mirrorPlaceholder": "https://api.github.com",
+    "mirrorDesc": "Optional. Replace with a mirror/proxy base URL if api.github.com is not accessible."
   },
   "listManager": {
     "allStars": "All Stars",

@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const BASE_URL = 'https://api.github.com'
+let BASE_URL = 'https://api.github.com'
+
+export function setApiBaseUrl(url) {
+  BASE_URL = url ? url.replace(/\/$/, '') : 'https://api.github.com'
+}
 
 function createClient(token) {
   return axios.create({
@@ -94,7 +98,7 @@ function parseTotalFromLink(linkHeader, currentPage, perPage, currentCount) {
 
 async function graphql(token, query, variables = {}) {
   const res = await axios.post(
-    'https://api.github.com/graphql',
+    `${BASE_URL}/graphql`,
     { query, variables },
     { headers: { Authorization: `Bearer ${token}` } },
   )
