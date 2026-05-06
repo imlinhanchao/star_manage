@@ -309,7 +309,7 @@ async function fetchAllForSearch() {
 }
 
 function commitSearch() {
-  searchQuery.value = inputValue.value
+  searchQuery.value = inputValue.value.trim()
 }
 
 function clearSearch() {
@@ -373,14 +373,11 @@ function handleListsUpdated() {
   }
 }
 
-// When search becomes active, fetch all repos for full-dataset filtering
-watch(searchQuery, (newQuery, oldQuery) => {
-  const wasEmpty = !oldQuery || oldQuery.trim().length === 0
+// When search becomes active, fetch all repos for full-dataset filtering (cache until list/sort changes)
+watch(searchQuery, (newQuery) => {
   const isNowActive = newQuery && newQuery.trim().length > 0
-  if (isNowActive && wasEmpty && searchAllRepos.value.length === 0) {
+  if (isNowActive && searchAllRepos.value.length === 0) {
     fetchAllForSearch()
-  } else if (!isNowActive) {
-    searchAllRepos.value = []
   }
 })
 
