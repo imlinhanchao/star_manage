@@ -41,7 +41,8 @@
     "perPage": " / 页",
     "filter": {
       "reposSortApplies": "个仓库 · 仅在当前页排序",
-      "shownOnPage": "个仓库在此页显示"
+      "shownOnPage": "个仓库在此页显示",
+      "searchResults": "个搜索结果"
     },
     "retry": "重试",
     "empty": {

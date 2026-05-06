@@ -41,7 +41,8 @@
     "perPage": " / page",
     "filter": {
       "reposSortApplies": "repos · sort applies per page",
-      "shownOnPage": "shown on this page"
+      "shownOnPage": "shown on this page",
+      "searchResults": "results found"
     },
     "retry": "Retry",
     "empty": {
