@@ -364,7 +364,7 @@ function handleListsUpdated() {
 watch(searchQuery, (newQuery, oldQuery) => {
   const wasEmpty = !oldQuery || oldQuery.trim().length === 0
   const isNowActive = newQuery && newQuery.trim().length > 0
-  if (isNowActive && wasEmpty) {
+  if (isNowActive && wasEmpty && searchAllRepos.value.length === 0) {
     fetchAllForSearch()
   } else if (!isNowActive) {
     searchAllRepos.value = []
