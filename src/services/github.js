@@ -37,6 +37,32 @@ export async function getStarredRepos(token, { page = 1, perPage = 30, sort = 'c
   return { repos, totalCount, linkHeader }
 }
 
+/**
+ * Fetches all starred repositories across all pages.
+ * Returns an array of repo objects shaped like { ...repo, starred_at }.
+ */
+export async function getAllStarredRepos(token, { sort = 'created', direction = 'desc' } = {}) {
+  const client = createClient(token)
+  let page = 1
+  let allRepos = []
+
+  while (true) {
+    const res = await client.get('/user/starred', {
+      params: { page, per_page: 100, sort, direction },
+      headers: { Accept: 'application/vnd.github.star+json' },
+    })
+    const repos = res.data.map(item =>
+      item.repo ? { ...item.repo, starred_at: item.starred_at } : item,
+    )
+    allRepos = allRepos.concat(repos)
+    const linkHeader = res.headers['link'] || ''
+    if (!linkHeader.includes('rel="next"')) break
+    page++
+  }
+
+  return allRepos
+}
+
 export async function unstarRepo(token, owner, repo) {
   const client = createClient(token)
   await client.delete(`/user/starred/${owner}/${repo}`)
@@ -230,6 +256,24 @@ export async function getListItems(token, listId, { first = 30, after = null } =
     hasNextPage: items.pageInfo.hasNextPage,
     endCursor: items.pageInfo.endCursor,
   }
+}
+
+/**
+ * Fetches all repositories from a specific GitHub Star List across all pages.
+ * Returns an array shaped like [{ repo, starred_at: null }].
+ */
+export async function getAllListItems(token, listId) {
+  let allItems = []
+  let after = null
+
+  while (true) {
+    const { repos, hasNextPage, endCursor } = await getListItems(token, listId, { first: 100, after })
+    allItems = allItems.concat(repos)
+    if (!hasNextPage) break
+    after = endCursor
+  }
+
+  return allItems
 }
 
 /**

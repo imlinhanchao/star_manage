@@ -39,16 +39,17 @@
     </div>
 
     <!-- Active filter chip -->
-    <div v-if="activeFilterLabel" class="flex items-center gap-2 mb-3">
-      <span class="badge badge-primary gap-1 text-xs py-3 pr-1">
+    <div v-if="activeFilterLabel || isSearchActive" class="flex items-center gap-2 mb-3">
+      <span v-if="activeFilterLabel" class="badge badge-primary gap-1 text-xs py-3 pr-1">
         <span class="i-mdi-filter text-xs"></span>
         {{ activeFilterLabel }}
         <button class="btn btn-ghost btn-xs btn-square h-4 w-4 min-h-0" aria-label="Clear filter" @click="$emit('update:selectedListId', null)">
           <span class="i-mdi-close text-xs"></span>
         </button>
       </span>
-      <span v-if="isListMode" class="text-xs text-base-content/40">{{ totalCount }} {{ t('starList.filter.reposSortApplies') }}</span>
-      <span v-else class="text-xs text-base-content/40">{{ displayRepos.length }} {{ t('starList.filter.shownOnPage') }}</span>
+      <span v-if="isSearchActive" class="text-xs text-base-content/40">{{ displayRepos.length }} {{ t('starList.filter.searchResults') }}</span>
+      <span v-else-if="isListMode" class="text-xs text-base-content/40">{{ totalCount }} {{ t('starList.filter.reposSortApplies') }}</span>
+      <span v-else-if="activeFilterLabel" class="text-xs text-base-content/40">{{ displayRepos.length }} {{ t('starList.filter.shownOnPage') }}</span>
     </div>
 
     <!-- Loading -->
@@ -86,7 +87,7 @@
     </div>
 
     <!-- Pagination: cursor-based (list mode) -->
-    <div v-if="!loading && isListMode && (totalPages > 1 || currentPage > 1)" class="flex justify-center items-center gap-1 mt-6">
+    <div v-if="!loading && !isSearchActive && isListMode && (totalPages > 1 || currentPage > 1)" class="flex justify-center items-center gap-1 mt-6">
       <button class="btn btn-sm btn-ghost btn-square" :disabled="currentPage === 1" @click="goToPage(1)">
         <span class="i-mdi-chevron-double-left"></span>
       </button>
@@ -101,7 +102,7 @@
     </div>
 
     <!-- Pagination: page numbers (REST mode) -->
-    <div v-if="!loading && !isListMode && totalPages > 1" class="flex justify-center items-center gap-1 mt-6 flex-wrap">
+    <div v-if="!loading && !isSearchActive && !isListMode && totalPages > 1" class="flex justify-center items-center gap-1 mt-6 flex-wrap">
       <button class="btn btn-sm btn-ghost btn-square" :disabled="currentPage === 1" @click="goToPage(1)">
         <span class="i-mdi-chevron-double-left"></span>
       </button>
@@ -136,7 +137,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import RepoCard from './RepoCard.vue'
-import { getStarredRepos, getListItems } from '../services/github.js'
+import { getStarredRepos, getListItems, getAllStarredRepos, getAllListItems } from '../services/github.js'
 
 const { t } = useI18n()
 
@@ -165,6 +166,10 @@ const sortDirection = ref('desc')
 const searchQuery = ref('')
 const totalPages = ref(1)
 
+// All repos fetched for full-dataset search (populated when searchQuery becomes non-empty)
+const searchAllRepos = ref([])
+const isSearchActive = computed(() => searchQuery.value.trim().length > 0)
+
 // Cursor-based pagination state for list mode.
 // listCursorMap[page] = the `after` cursor to use when fetching that page.
 // Page 1 always uses null (no cursor), so it is pre-populated.
@@ -183,7 +188,7 @@ const activeFilterLabel = computed(() => {
 })
 
 const displayRepos = computed(() => {
-  let items = allRepos.value
+  let items = isSearchActive.value ? searchAllRepos.value : allRepos.value
 
   // In non-list mode, apply client-side list filter for 'no list' view
   if (!isListMode.value && props.selectedListId === '__no_list__' && props.lists.length > 0) {
@@ -280,6 +285,25 @@ async function loadListItems(page = 1) {
   }
 }
 
+async function fetchAllForSearch() {
+  loading.value = true
+  error.value = ''
+  try {
+    if (isListMode.value) {
+      searchAllRepos.value = await getAllListItems(props.token, props.selectedListId)
+    } else {
+      const apiSort = sortField.value === 'stars' ? 'created' : sortField.value
+      const repos = await getAllStarredRepos(props.token, { sort: apiSort, direction: sortDirection.value })
+      searchAllRepos.value = repos.map(repo => ({ repo, starred_at: repo.starred_at || null }))
+    }
+  } catch (e) {
+    error.value = e.response?.data?.message || e.message || 'Failed to load repositories'
+    searchAllRepos.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
 function setSortField(field) {
   if (sortField.value === field) return
   sortField.value = field
@@ -336,6 +360,17 @@ function handleListsUpdated() {
   }
 }
 
+// When search becomes active, fetch all repos for full-dataset filtering
+watch(searchQuery, (newQuery, oldQuery) => {
+  const wasEmpty = !oldQuery || oldQuery.trim().length === 0
+  const isNowActive = newQuery && newQuery.trim().length > 0
+  if (isNowActive && wasEmpty) {
+    fetchAllForSearch()
+  } else if (!isNowActive) {
+    searchAllRepos.value = []
+  }
+})
+
 // Switch data source when the selected list changes
 watch(
   () => props.selectedListId,
@@ -344,10 +379,19 @@ watch(
     listCursorMap.value = { 1: null }
     listHasNextPage.value = false
     allRepos.value = []
+    searchAllRepos.value = []
     if (newId && newId !== '__no_list__') {
-      loadListItems(1)
+      if (isSearchActive.value) {
+        fetchAllForSearch()
+      } else {
+        loadListItems(1)
+      }
     } else {
-      loadRepos()
+      if (isSearchActive.value) {
+        fetchAllForSearch()
+      } else {
+        loadRepos()
+      }
     }
   },
 )
