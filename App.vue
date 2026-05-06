@@ -116,7 +116,7 @@ import { useI18n } from 'vue-i18n'
 import TokenInput from './src/components/TokenInput.vue'
 import StarList from './src/components/StarList.vue'
 import ListManager from './src/components/ListManager.vue'
-import { getUserLists } from './src/services/github.js'
+import { getUserLists, setApiBaseUrl } from './src/services/github.js'
 
 const { t, locale } = useI18n()
 
@@ -133,6 +133,9 @@ onMounted(() => {
   const savedUser = localStorage.getItem('github_user')
   const savedTheme = localStorage.getItem('star_theme') || 'winter'
   const savedLang = localStorage.getItem('star_lang')
+  const savedMirror = localStorage.getItem('github_api_mirror')
+
+  if (savedMirror) setApiBaseUrl(savedMirror)
 
   if (savedLang) {
     locale.value = savedLang

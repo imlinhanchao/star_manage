@@ -31,6 +31,19 @@
             </button>
           </div>
         </div>
+        <!-- API Mirror URL -->
+        <div class="form-control gap-2">
+          <label class="label pb-0">
+            <span class="label-text font-semibold">{{ t('token.mirror') }}</span>
+          </label>
+          <input
+            v-model="mirrorInput"
+            type="url"
+            class="input input-bordered input-sm"
+            :placeholder="t('token.mirrorPlaceholder')"
+          />
+          <p class="text-xs text-base-content/50">{{ t('token.mirrorDesc') }}</p>
+        </div>
         <div v-if="error" class="alert alert-error">
           <span class="i-mdi-alert-circle text-lg"></span>
           <span>{{ error }}</span>
@@ -53,7 +66,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { validateToken } from '../services/github.js'
+import { validateToken, setApiBaseUrl } from '../services/github.js'
 
 const { t } = useI18n()
 
@@ -67,11 +80,20 @@ const tokenInput = ref('')
 const showToken = ref(false)
 const loading = ref(false)
 const error = ref('')
+const mirrorInput = ref(localStorage.getItem('github_api_mirror') || '')
 
 async function handleSave() {
   if (!tokenInput.value.trim()) return
   loading.value = true
   error.value = ''
+  // Apply mirror URL before validation so the request uses the configured endpoint
+  const mirror = mirrorInput.value.trim()
+  setApiBaseUrl(mirror)
+  if (mirror) {
+    localStorage.setItem('github_api_mirror', mirror)
+  } else {
+    localStorage.removeItem('github_api_mirror')
+  }
   try {
     const user = await validateToken(tokenInput.value.trim())
     localStorage.setItem('github_token', tokenInput.value.trim())
